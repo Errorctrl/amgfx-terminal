@@ -243,6 +243,28 @@
             document.getElementById('intel-msg').innerText = "TARGETING COLD DIGIT: " + cold;
         }
     }
+    async function toggleEngine() {
+    // 1. Check License Status first
+    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+    const userData = userDoc.data();
+
+    if (!userData || userData.status !== 'active') {
+        alert("🚨 LICENSE INACTIVE: Please contact @xdevelops to activate your terminal.");
+        document.getElementById('intel-msg').innerText = "STATUS: LICENSE REQUIRED";
+        document.getElementById('intel-msg').style.color = "var(--danger)";
+        return; // Stops the engine from starting
+    }
+
+    // 2. Original logic continues if active
+    if(isRunning) { 
+        ws.close(); 
+        isRunning = false; 
+        document.getElementById('start-btn').innerText="ENGAGE ROCC ENGINE"; 
+    } else { 
+        startEngine(); 
+    }
+}
+
 </script>
 </body>
 </html>
