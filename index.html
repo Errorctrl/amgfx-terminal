@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AMG FX | ROCC Intelligence</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root { --amg: #00ff44; --bg: #050505; --danger: #ff4430; --gray: #111; --glass: rgba(15, 15, 15, 0.98); }
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: white; margin: 0; overflow: hidden; height: 100vh; }
+
+        /* 1. LOADING SCREEN */
+        #loading-screen { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s; }
+        .spinner { width: 50px; height: 50px; border: 2px solid #222; border-top: 2px solid var(--amg); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* 2. AUTH & LEGAL UI */
+        .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .glass-card { background: var(--glass); border: 1px solid #222; padding: 20px; border-radius: 12px; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { background: #000; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 8px; width: 100%; margin-bottom: 12px; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--amg); }
+        button { background: var(--amg); color: #000; border: none; padding: 16px; border-radius: 8px; font-weight: 900; width: 100%; cursor: pointer; text-transform: uppercase; }
+        button:disabled { background: #222; color: #555; cursor: not-allowed; }
+
+        /* 3. TERMINAL UI */
+        #user-terminal { display: none; height: 100vh; overflow-y: auto; padding: 10px; }
+        .rocc-bars { display: flex; height: 60px; gap: 4px; align-items: flex-end; margin: 15px 0; }
+        .bar { flex: 1; background: #1a1a1a; position: relative; border-radius: 2px; height: 100%; }
+        .fill { background: var(--amg); width: 100%; position: absolute; bottom: 0; transition: 0.3s; box-shadow: 0 0 10px rgba(0,255,68,0.3); }
+        .bar-label { font-size: 8px; position: absolute; bottom: -12px; width: 100%; text-align: center; color: #555; }
+        #digit-display { font-size: 80px; font-weight: 900; text-align: center; color: var(--amg); margin: 20px 0; }
+        
+        /* Indicators */
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="loading-screen">
+    <div class="spinner"></div>
+    <div style="margin-top: 20px; color: var(--amg); letter-spacing: 5px; font-weight: 900;">AMG FX</div>
+    <div id="load-status" style="font-size: 8px; color: #444; margin-top: 10px;">VERIFYING PROTOCOLS...</div>
+    <div style="margin-top: 30px; display: flex; gap: 20px;">
+        <div style="text-align:center"><div id="s-deriv" class="status-dot"></div><div style="font-size:6px; color:#444">DERIV</div></div>
+        <div style="text-align:center"><div id="s-fire" class="status-dot"></div><div style="font-size:6px; color:#444">FIREBASE</div></div>
+    </div>
+</div>
+
+<div id="auth-screen" class="overlay" style="display:none;">
+    <div class="glass-card">
+        <form id="auth-form">
+            <h2 style="text-align:center; color:var(--amg); margin:0;">LOGIN</h2>
+            <p style="text-align:center; font-size:9px; color:#444; margin-bottom:20px;">@XDEVELOPS SECURE ACCESS</p>
+            
+            <input type="email" id="email" autocomplete="username" placeholder="Email Address" required>
+            <input type="password" id="password" autocomplete="current-password" placeholder="Password" required>
+            
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px;">
+                <input type="checkbox" id="remember-me" style="width:14px;">
+                <span style="font-size:11px; color:#888;">Remember Session</span>
+            </div>
+
+            <button type="submit">ACCESS TERMINAL</button>
+            <button type="button" onclick="handleAuth('signup')" style="background:transparent; color:var(--amg); border:1px solid var(--amg); margin-top:10px;">CREATE ACCOUNT</button>
+            <div style="text-align:center; margin-top:12px;">
+                <button type="button" onclick="resetPassword()" style="background:none; color:#444; font-size:10px; width:auto; border:none;">Forgot Password?</button>
+            </div>
+            <div id="recaptcha-container"></div>
+        </form>
+    </div>
+</div>
+
+<div id="user-terminal">
+    <div class="glass-card" style="max-width:100%; margin:0 0 10px 0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; color:#444; letter-spacing:1px;">INTEGRITY: <span id="integrity-val" style="color:var(--amg)">100%</span></span>
+            <span id="sync-clock" style="font-size:9px; color:#444;">SYNC: 00:00:00</span>
+        </div>
+        <div id="reconnect-timer" style="display:none; color:var(--danger); font-size:11px; text-align:center; margin-top:10px; font-weight:bold;">CONNECTION LOST: RETRYING IN <span id="countdown">10</span>s</div>
+    </div>
+
+    <div class="glass-card" style="max-width:100%; margin:0 0 10px 0;">
+        <div class="rocc-bars" id="bar-container"></div>
+        <div id="digit-display">0</div>
+        <div id="intel-msg" style="text-align:center; font-size:10px; color:var(--amg); font-weight:bold;">ENGINE STANDBY</div>
+    </div>
+
+    <div class="glass-card" style="max-width:100%; margin:0 0 10px 0;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <span style="font-size:10px; color:var(--amg)">AUTO-TARGET COLD DIGIT</span>
+            <input type="checkbox" id="auto-target" style="width:20px;">
+        </div>
+        <input type="password" id="api-token" placeholder="Deriv API Token">
+        <div style="display:flex; gap:8px;">
+            <input type="number" id="stake" placeholder="Stake" value="1.00">
+            <input type="number" id="target" placeholder="Target Digit" value="0">
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:8px; margin:10px 0;">
+            <input type="checkbox" id="risk-lock" onchange="document.getElementById('start-btn').disabled = !this.checked">
+            <span style="font-size:9px; color:#555;">I accept that <b>@xdevelops</b> is not liable for losses.</span>
+        </div>
+        
+        <button id="start-btn" onclick="toggleEngine()" disabled>ENGAGE ROCC ENGINE</button>
+    </div>
+
+    <div style="text-align:center; padding:20px; opacity:0.5;">
+        <p style="font-size:8px; color:#777;">AMG FX is an analysis tool. Use at your own risk.<br>
+        Copyright © <span id="copy-year"></span> | <b>@XDEVELOPS</b></p>
+    </div>
+</div>
+
+<script>
+    // --- INITIALIZATION ---
+    const firebaseConfig = {
+  apiKey: "AIzaSyBqznf5R1C7FJ_LSybGlSeVrrO_uWMCL7s",
+  authDomain: "amg-fx-rocc.firebaseapp.com",
+  projectId: "amg-fx-rocc",
+  storageBucket: "amg-fx-rocc.firebasestorage.app",
+  messagingSenderId: "330030651405",
+  appId: "1:330030651405:web:b5178ddbd27a88cfb65d44",
+  measurementId: "G-K00F1126ZC"
+};
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore(), auth = firebase.auth();
+    let ws, isRunning = false, history = [], pingTotal = 0, pingOk = 0;
+
+    window.onload = () => {
+        document.getElementById('copy-year').innerText = new Date().getFullYear();
+        for(let i=0; i<10; i++) document.getElementById('bar-container').innerHTML += `<div class="bar"><div id="fill-${i}" class="fill" style="height:0%"></div><div class="bar-label">${i}</div></div>`;
+        
+        checkServer('s-fire', () => db.collection('system').doc('config').get());
+        checkServer('s-deriv', () => new Promise((res, rej) => {
+            const t = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+            t.onopen = () => { t.close(); res(); }; t.onerror = rej;
+        }));
+
+        auth.onAuthStateChanged(user => {
+            const loader = document.getElementById('loading-screen');
+            if(user) {
+                document.getElementById('user-terminal').style.display = 'block';
+                document.getElementById('auth-screen').style.display = 'none';
+            } else {
+                document.getElementById('auth-screen').style.display = 'flex';
+                document.getElementById('user-terminal').style.display = 'none';
+            }
+            setTimeout(() => { loader.style.opacity = '0'; setTimeout(()=>loader.style.display='none', 800); }, 1500);
+        });
+    };
+
+    async function checkServer(id, fn) {
+        try { await fn(); document.getElementById(id).style.background = "var(--amg)"; }
+        catch(e) { document.getElementById(id).style.background = "var(--danger)"; }
+    }
+
+    // --- AUTH LOGIC ---
+    document.getElementById('auth-form').onsubmit = (e) => { e.preventDefault(); handleAuth('login'); };
+    async function handleAuth(mode) {
+        const email = document.getElementById('email').value, pass = document.getElementById('password').value;
+        const persist = document.getElementById('remember-me').checked ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+        try {
+            await auth.setPersistence(persist);
+            if(mode === 'signup') {
+                const u = await auth.createUserWithEmailAndPassword(email, pass);
+                await db.collection('users').doc(u.user.uid).set({ email, createdAt: new Date() });
+            } else await auth.signInWithEmailAndPassword(email, pass);
+        } catch(e) { alert(e.message); }
+    }
+    async function resetPassword() {
+        const e = document.getElementById('email').value;
+        if(!e) return alert("Enter email first");
+        await auth.sendPasswordResetEmail(e); alert("Reset link sent!");
+    }
+
+    // --- NETWORK GUARD ---
+    async function heartbeat() {
+        pingTotal++;
+        try {
+            await fetch('https://www.google.com/favicon.ico', {mode:'no-cors', cache:'no-store'});
+            pingOk++;
+            document.getElementById('reconnect-timer').style.display = 'none';
+        } catch(e) {
+            document.getElementById('reconnect-timer').style.display = 'block';
+            startCountdown();
+        }
+        const rate = Math.round((pingOk/pingTotal)*100);
+        document.getElementById('integrity-val').innerText = rate + "%";
+        document.getElementById('sync-clock').innerText = "SYNC: " + new Date().toLocaleTimeString();
+    }
+    setInterval(heartbeat, 5000);
+
+    function startCountdown() {
+        let s = 10;
+        const iv = setInterval(() => {
+            s--; document.getElementById('countdown').innerText = s;
+            if(s <= 0 || pingOk > 0) { clearInterval(iv); }
+        }, 1000);
+    }
+
+    // --- ROCC ENGINE ---
+    function toggleEngine() {
+        if(isRunning) { ws.close(); isRunning = false; document.getElementById('start-btn').innerText="ENGAGE ROCC ENGINE"; }
+        else startEngine();
+    }
+
+    function startEngine() {
+        const token = document.getElementById('api-token').value;
+        if(!token) return alert("Token Required");
+        ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+        ws.onopen = () => ws.send(JSON.stringify({authorize: token}));
+        ws.onmessage = (msg) => {
+            const d = JSON.parse(msg.data);
+            if(d.msg_type === 'authorize') {
+                isRunning = true; document.getElementById('start-btn').innerText = "DISENGAGE ENGINE";
+                ws.send(JSON.stringify({ticks: 'R_100'}));
+            }
+            if(d.msg_type === 'tick') {
+                const digit = d.tick.quote.slice(-1);
+                updateROCC(parseInt(digit));
+            }
+        };
+    }
+
+    function updateROCC(digit) {
+        document.getElementById('digit-display').innerText = digit;
+        history.push(digit); if(history.length > 25) history.shift();
+        let counts = new Array(10).fill(0);
+        history.forEach(n => counts[n]++);
+        
+        let min = 25, cold = 0;
+        counts.forEach((c, i) => {
+            document.getElementById(`fill-${i}`).style.height = ((c/history.length)*100) + "%";
+            if(c < min) { min = c; cold = i; }
+        });
+
+        if(document.getElementById('auto-target').checked) {
+            document.getElementById('target').value = cold;
+            document.getElementById('intel-msg').innerText = "TARGETING COLD DIGIT: " + cold;
+        }
+    }
+</script>
+</body>
+</html>
