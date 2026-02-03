@@ -264,6 +264,14 @@
         startEngine(); 
     }
 }
+    // Add this to your main bot's initialization
+db.collection('users').doc(auth.currentUser.uid).onSnapshot(doc => {
+    if (doc.data().status === 'pending') {
+        alert("Your license has been deactivated by the administrator.");
+        window.location.reload(); // Force a lockout
+    }
+});
+
 
 </script>
 </body>
