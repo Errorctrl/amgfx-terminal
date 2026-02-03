@@ -299,6 +299,29 @@ db.collection('users').doc(auth.currentUser.uid).onSnapshot(doc => {
         window.location.reload(); // Force a lockout
     }
 });
+    // This replaces your previous global_state listener
+db.collection('system').doc('global_state').onSnapshot(doc => {
+    const state = doc.data();
+    const overlay = document.getElementById('emergency-overlay'); // Ensure you add this div to your HTML
+
+    if (state && state.emergency_stop) {
+        // Stop the Engine
+        if (ws) ws.close();
+        isRunning = false;
+
+        // Show the Warning Box
+        overlay.style.display = 'flex';
+        document.getElementById('emergency-msg').innerText = state.message;
+        
+        // Disable Controls
+        document.getElementById('start-btn').disabled = true;
+    } else {
+        // Restore UI
+        overlay.style.display = 'none';
+        document.getElementById('start-btn').disabled = false;
+    }
+});
+
 
 
 </script>
