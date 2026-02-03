@@ -131,6 +131,34 @@
     let ws, isRunning = false, history = [], pingTotal = 0, pingOk = 0;
 
     window.onload = () => {
+        // Add this inside your window.onload or initialization script
+db.collection('system').doc('global_state').onSnapshot(doc => {
+    const state = doc.data();
+    
+    if (state && state.emergency_stop === true) {
+        // 1. Instantly kill the WebSocket connection
+        if (ws) {
+            ws.close();
+            isRunning = false;
+        }
+
+        // 2. Lock the UI and show an emergency overlay
+        document.getElementById('start-btn').disabled = true;
+        document.getElementById('start-btn').innerText = "SYSTEM LOCKED BY ADMIN";
+        document.getElementById('intel-msg').innerText = "🚫 " + state.message;
+        document.getElementById('intel-msg').style.color = "var(--danger)";
+        
+        // 3. Visual warning
+        document.body.style.border = "5px solid #ff4430";
+        console.error("ADMIN KILL SWITCH DETECTED");
+    } else {
+        // Restore functionality if emergency_stop is false
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('start-btn').innerText = "ENGAGE ROCC ENGINE";
+        document.body.style.border = "none";
+    }
+});
+
         document.getElementById('copy-year').innerText = new Date().getFullYear();
         for(let i=0; i<10; i++) document.getElementById('bar-container').innerHTML += `<div class="bar"><div id="fill-${i}" class="fill" style="height:0%"></div><div class="bar-label">${i}</div></div>`;
         
