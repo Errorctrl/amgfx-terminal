@@ -523,6 +523,20 @@ function processNewDigit(digit) {
         document.getElementById('target-digit').innerText = "...";
     }
 }
+new TradingView.widget({
+    "autosize": true,
+    "symbol": "DERIV:R_100", // Try 'DERIV:R_100' or 'BINARY:R_100'
+    "interval": "1",
+    "timezone": "Etc/UTC",
+    "theme": "dark",
+    "style": "1",
+    "locale": "en",
+    "toolbar_bg": "#f1f3f6",
+    "enable_publishing": false,
+    "hide_side_toolbar": false,
+    "allow_symbol_change": true, // This allows you to search for the right one if it fails
+    "container_id": "tv-chart-container"
+});
 
 
 
