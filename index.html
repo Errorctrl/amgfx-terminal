@@ -83,6 +83,11 @@
         </div>
         <div id="reconnect-timer" style="display:none; color:var(--danger); font-size:11px; text-align:center; margin-top:10px; font-weight:bold;">CONNECTION LOST: RETRYING IN <span id="countdown">10</span>s</div>
     </div>
+<div class="glass-card" style="margin-top: 20px; padding: 10px; height: 350px;">
+    <h4 style="color: var(--amg); font-size: 10px; margin-bottom: 10px; letter-spacing: 1px;">LIVE MARKET TREND (V100)</h4>
+    <div id="tv-chart-container" style="width: 100%; height: calc(100% - 25px); border-radius: 5px; overflow: hidden;">
+        </div>
+</div>
 
     <div class="glass-card" style="max-width:100%; margin:0 0 10px 0;">
         <div class="rocc-bars" id="bar-container"></div>
@@ -135,6 +140,33 @@
         Copyright © <span id="copy-year"></span> | <b>@XDEVELOPS</b></p>
     </div>
 </div>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+
+<script>
+    function loadTradingView() {
+        new TradingView.widget({
+            "autosize": true,
+            "symbol": "DERIV:V100", // This pulls Volatility 100
+            "interval": "1", // 1-minute candles
+            "timezone": "Etc/UTC",
+            "theme": "dark",
+            "style": "1", // Candle style
+            "locale": "en",
+            "toolbar_bg": "#000000",
+            "enable_publishing": false,
+            "hide_top_toolbar": true,
+            "hide_legend": false,
+            "save_image": false,
+            "container_id": "tv-chart-container",
+            "backgroundColor": "rgba(0, 0, 0, 1)",
+            "gridColor": "rgba(42, 46, 57, 0.1)"
+        });
+    }
+
+    // Call this after the user logs in
+    window.addEventListener('load', loadTradingView);
+</script>
+
 
 <script>
     // --- INITIALIZATION ---
@@ -440,6 +472,31 @@ function calculateMarketHealth() {
         healthDisplay.style.color = "#888";
     }
 }
+    function downloadSessionReport() {
+    const totalUsers = document.getElementById('count-users')?.innerText || "1";
+    const profit = document.getElementById('session-profit').innerText;
+    const tableData = document.getElementById('analysis-table-body').innerText;
+
+    const reportContent = `
+        @XDEVELOPS TERMINAL SESSION REPORT
+        ----------------------------------
+        Timestamp: ${new Date().toLocaleString()}
+        Final Profit: $${profit}
+        
+        DIGIT ANALYSIS:
+        Digit | Hits | Freq%
+        ${tableData}
+        
+        Note: Trading involves risk. Use ROCC responsibly.
+    `;
+
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `AMG_Report_${Date.now()}.txt`;
+    link.click();
+}
+
 
 
 
