@@ -89,6 +89,21 @@
         <div id="digit-display">0</div>
         <div id="intel-msg" style="text-align:center; font-size:10px; color:var(--amg); font-weight:bold;">ENGINE STANDBY</div>
     </div>
+<div class="glass-card" style="margin-top: 20px; overflow-x: auto;">
+    <h4 style="color: var(--amg); font-size: 10px; margin-bottom: 10px; letter-spacing: 1px;">ALGORITHMIC ANALYSIS</h4>
+    <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+        <thead>
+            <tr style="color: #444; border-bottom: 1px solid #111;">
+                <th style="padding: 8px;">DIGIT</th>
+                <th style="padding: 8px;">OCCURRENCE</th>
+                <th style="padding: 8px;">FREQUENCY %</th>
+                <th style="padding: 8px;">STATE</th>
+            </tr>
+        </thead>
+        <tbody id="analysis-table-body">
+            </tbody>
+    </table>
+</div>
 
     <div class="glass-card" style="max-width:100%; margin:0 0 10px 0;">
         <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -374,6 +389,57 @@ async function handleLogout() {
     }
 }
 
+function updateAnalysisTable() {
+    const tbody = document.getElementById('analysis-table-body');
+    const totalTicks = history.length || 1; // Avoid division by zero
+    const counts = new Array(10).fill(0);
+    
+    // Count occurrences
+    history.forEach(d => counts[d]++);
+
+    let html = "";
+    for (let i = 0; i < 10; i++) {
+        const freq = ((counts[i] / totalTicks) * 100).toFixed(1);
+        let state = '<span style="color:#555">NEUTRAL</span>';
+        
+        // Define State Logic
+        if (freq < 7) state = '<span style="color:var(--amg)">COLD</span>';
+        if (freq > 13) state = '<span style="color:var(--danger)">HOT</span>';
+
+        html += `
+            <tr style="border-bottom: 1px solid #0a0a0a;">
+                <td style="padding: 8px; font-weight: bold; color: white;">${i}</td>
+                <td style="padding: 8px;">${counts[i]} hits</td>
+                <td style="padding: 8px;">${freq}%</td>
+                <td style="padding: 8px; font-size: 9px;">${state}</td>
+            </tr>
+        `;
+    }
+    tbody.innerHTML = html;
+}
+
+// Call this function inside your existing onMessage (WebSocket) 
+// right after you update the ROCC bars.
+function calculateMarketHealth() {
+    if (history.length < 20) return "CALIBRATING...";
+    
+    // Standard Deviation check: Is the distribution even or skewed?
+    const counts = new Array(10).fill(0);
+    history.forEach(d => counts[d]++);
+    const max = Math.max(...counts);
+    const min = Math.min(...counts);
+    const spread = max - min;
+
+    const healthDisplay = document.getElementById('integrity-display');
+    
+    if (spread > 10) {
+        healthDisplay.innerText = "SKEWED (HIGH PREDICTABILITY)";
+        healthDisplay.style.color = "var(--amg)";
+    } else {
+        healthDisplay.innerText = "BALANCED (RANDOM)";
+        healthDisplay.style.color = "#888";
+    }
+}
 
 
 
